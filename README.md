@@ -1,3 +1,4 @@
+```bash
 usage: mcs.py [-h] -r REF_FILE -m MUTPOS_FILE [-c MIN_CLONALITY]
               [-C MAX_CLONALITY] [-d MIN_DEPTH] [-n NOTATION] [-i DPI]
               [-f FORMAT] [-y YMAX] [-s SAVE] [-t TITLE] [-l LAB]
@@ -34,3 +35,4 @@ optional arguments:
                         option creates an informative title. Type None for no
                         title.
   -l LAB, --lab LAB     Laboratory running program in [loeb].
+```
