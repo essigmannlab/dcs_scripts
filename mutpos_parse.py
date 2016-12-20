@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import os
 import argparse
 import itertools
@@ -192,11 +193,19 @@ def from_mutpos(mutpos_file, ref_file, clonality=(0, 1), min_depth=100, kmer=3,
 
             if fmt == 'essigmann':
                 A, C, G, T, N = map(int, line[4:9])
+            elif fmt == 'wesdirect':
+                N = 0
+                thisMut = {base: 0 for base in dna_bases}
+                thisMut[str(line[5])] = int(line[4])
+                A = thisMut['A']
+                C = thisMut['C']
+                G = thisMut['G']
+                T = thisMut['T']
             elif fmt == 'loeb':
                 T, C, G, A = map(int, line[5:9])
                 N = int(line[11])
             else:
-                raise ValueError('Format must be essigmann or loeb')
+                raise ValueError('Format must be essigmann, loeb, wesdirect')
 
             # If we see no observed base substitutions, skip this loop
             if sum([A, C, G, T]) == 0:
@@ -282,13 +291,23 @@ def get_kmer(record_dict, chromosome, position, k=3, pos='mid'):
 
     assert k > pos, "Cannot index past length of k"
 
-    chromosome_length = len(str(record_dict[chromosome].seq))
     start = position - pos
     end = position + (k - pos)
 
+    try:
+        chromosome_length = len(str(record_dict[chromosome].seq))
+    except ValueError:
+        raise ValueError(
+            'Chromosome {} not found in reference'.format(chromosome))
+
     # It is necessary to protect for the two edge cases now
     if start >= 0 and end <= chromosome_length:
-        return str(record_dict[chromosome].seq[start:end])
+        try:
+            return str(record_dict[chromosome].seq[start:end])
+        except ValueError:
+            ValueError(
+                'Position {} not found in chromosome {}'.format(
+                    start, chromosome))
     else:
         return None
 
@@ -528,11 +547,12 @@ def main():
                               "default option creates an informative title. "
                               "Type None for no title."),
                         required=False)
-    parser.add_argument("-l", "--lab",
+    parser.add_argument("--lab",
                         type=str,
                         dest="lab",
                         default="loeb",
-                        help=("Laboratory running program in [loeb]."),
+                        help=("Mutpos file format (loeb, essigmann, "
+                              "wesdirect) [loeb]."),
                         required=False)
 
     args = parser.parse_args()
