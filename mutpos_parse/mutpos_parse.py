@@ -8,37 +8,67 @@ import matplotlib.pyplot as plt
 
 from Bio import SeqIO
 from openpyxl import Workbook
-from matplotlib import gridspec
 from collections import OrderedDict
-from openpyxl.styles import Font, colors, PatternFill
 from matplotlib.patches import Rectangle
 from Bio.Seq import Seq, reverse_complement
+from openpyxl.styles import Font, colors, PatternFill
 
+mpl.rc('axes', lw=1, ec="#222222", fc='white', labelcolor="#222222")
+mpl.rc('axes.spines', bottom=True, left=True, top=False, right=False)
+mpl.rc('figure', fc='white')
+mpl.rc('font', size=12)
+mpl.rc('legend',
+       frameon=False,
+       markerscale=0.85,
+       numpoints=1,
+       scatterpoints=1)
+mpl.rc('lines', lw=0.8, color="#222222", solid_capstyle='butt')
+mpl.rc('savefig', dpi=200, fc='#f9f9f9', transparent=False)
+mpl.rc('text', usetex=False, color="#222222")
+mpl.rc('xtick', labelsize=10, color="#222222", direction='out')
+mpl.rc('ytick', labelsize=10, color="#222222", direction='out')
+mpl.rc('xtick.major', size=6, width=1)
+mpl.rc('xtick.minor', size=3, width=1)
+mpl.rc('ytick.major', size=6, width=1)
+mpl.rc('ytick.minor', size=3, width=1)
 
-mpl.rcParams['lines.linewidth'] = 0.65
-
-purines = ('A', 'G')
-pyrimidines = ('C', 'T')
+purines, pyrimidines = ('A', 'G'), ('C', 'T')
 dna_bases = sorted(purines + pyrimidines)
 
 py_labels = ('C>A', 'C>G', 'C>T', 'T>A', 'T>C', 'T>G')
 pu_labels = ('A>C', 'A>G', 'A>T', 'G>A', 'G>C', 'G>T')
 
-sig_palette = {
-    'almost_black': '#262626',
-    'black': '#231F20',
-    'blue': '#52C3F1',
-    'darkgrey': '#8E8F8F',
-    'green': '#97D54C',
-    'grey': '#CBC9C8',
-    'litegrey': '#f6f6f6',
-    'pink': '#EDBFC2',
-    'red': '#E62223'
-}
+sig_colors = ['#52C3F1', '#231F20', '#E62223', '#CBC9C8', '#97D54C', '#EDBFC2']
 
-# Color order for spectrum plots
-spectrum_colors = ['#52C3F1', '#231F20', '#E62223',
-                   '#CBC9C8', '#97D54C', '#EDBFC2']
+
+def axes_off(ax):
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    return(ax)
+
+
+def cleanup_chart_junk(ax):
+    ax.grid(False)
+    ax.patch.set_facecolor('white')
+    ax.yaxis.set_ticks_position('left')
+    ax.xaxis.set_ticks_position('bottom')
+    ax.get_xaxis().tick_bottom()
+    ax.get_yaxis().tick_left()
+    for tic in ax.yaxis.get_major_ticks() + ax.xaxis.get_major_ticks():
+        tic.tick2On = False
+    return ax
+
+
+def despine(ax):
+    for spine in ['top', 'left', 'bottom', 'right']:
+        ax.spines[spine].set_visible(False)
+    return ax
+
+
+def ticks_off(ax):
+    for tic in ax.yaxis.get_major_ticks() + ax.xaxis.get_major_ticks():
+        tic.tick1On = tic.tick2On = False
+    return ax
 
 
 class Mutation(object):
@@ -101,44 +131,31 @@ class Spectrum(OrderedDict):
     @property
     def proportion(self):
         if self.variant_total > 0:
-            return [val / self.variant_total for val in self.values()]
+            return [n / self.variant_total for n in self.values()]
         else:
-            return [0 for val in self.values()]
+            return list(self.values())
 
 
-def colored_bins(division, span=1, ax=None, colors=None, labels=None,
-                 padding=0):
-
+def colored_bins(division, ax=None, colors=None, labels=None, padding=0):
     if ax is None:
         ax = plt.gca()
 
-    ax.grid(False)
-    ax.patch.set_facecolor('white')
+    ax = axes_off(despine(ticks_off(cleanup_chart_junk(ax))))
 
     if colors is None:
-        colors = spectrum_colors
-
-    colors = itertools.cycle(colors)
-
-    ax.get_yaxis().set_visible(False)
+        colors = itertools.cycle('#222222')
 
     for bin in range(division):
-        x = (bin / division, 0)
-        y = (1 / division) - padding
-        rect = Rectangle(x, y, 1, color=next(colors))
-        ax.add_patch(rect)
-
-    for tic in ax.yaxis.get_major_ticks() + ax.xaxis.get_major_ticks():
-        tic.tick1On = tic.tick2On = False
-    for spine in ['bottom', 'left', 'right', 'top']:
-        ax.spines[spine].set_visible(False)
+        ax.add_patch(Rectangle(xy=(bin / division, 0),
+                               width=(1 / division) - padding,
+                               height=1,
+                               color=next(colors)))
 
     if labels is not None:
+        ax.get_xaxis().set_visible(True)
         xticks = [(x - 0.5) / division for x in range(1, division + 1)]
         ax.set_xticks(xticks)
         ax.set_xticklabels(labels)
-    else:
-        ax.get_xaxis().set_visible(False)
     return ax
 
 
@@ -162,7 +179,7 @@ def dna_kmers(k=3):
         yield ''.join(prod)
 
 
-def fasta(ref_file):
+def fasta_to_dict(ref_file):
 
     with open(ref_file, 'r') as handle:
         return SeqIO.to_dict(SeqIO.parse(handle, 'fasta'))
@@ -172,7 +189,7 @@ def from_mutpos(mutpos_file, ref_file, clonality=(0, 1), min_depth=100, kmer=3,
                 chromosome=None, start=0, end=None, notation='pyrimidine',
                 fmt='essigmann', verbose=False):
     mutations = []
-    record_dict = fasta(ref_file)
+    record_dict = fasta_to_dict(ref_file)
 
     # Open the mutpos_file and read data line by line
     with open(mutpos_file, 'r') as handle:
@@ -194,7 +211,7 @@ def from_mutpos(mutpos_file, ref_file, clonality=(0, 1), min_depth=100, kmer=3,
             if fmt == 'essigmann':
                 A, C, G, T, N = map(int, line[4:9])
             elif fmt == 'wesdirect':
-                N = 0
+                # N = 0
                 thisMut = {base: 0 for base in dna_bases}
                 thisMut[str(line[5])] = int(line[4])
                 A = thisMut['A']
@@ -203,7 +220,7 @@ def from_mutpos(mutpos_file, ref_file, clonality=(0, 1), min_depth=100, kmer=3,
                 T = thisMut['T']
             elif fmt == 'loeb':
                 T, C, G, A = map(int, line[5:9])
-                N = int(line[11])
+                # N = int(line[11])
             else:
                 raise ValueError('Format must be essigmann, loeb, wesdirect')
 
@@ -213,7 +230,7 @@ def from_mutpos(mutpos_file, ref_file, clonality=(0, 1), min_depth=100, kmer=3,
 
             # Read mapped depth (minus Ns) at this position must be greater
             # than min_depth, if not, skip this loop
-            if min_depth > depth - N:
+            if min_depth > depth:
                 continue
 
             # Get the kmer context at the given position in the given
@@ -229,11 +246,11 @@ def from_mutpos(mutpos_file, ref_file, clonality=(0, 1), min_depth=100, kmer=3,
             # of the trinucleotide context, and the mutation counts for the
             # complement of the base substitution observed
             if (
-                (notation == 'pyrimidine' and ref in purines) or
-                (notation == 'purine' and ref in pyrimidines)
+                (notation == 'purine' and ref in pyrimidines) or
+                (notation == 'pyrimidine' and ref in purines)
             ):
-                ref = reverse_complement(ref)
-                context = reverse_complement(context)
+                ref = str(reverse_complement(ref))
+                context = str(reverse_complement(context))
                 A, G, C, T = T, C, G, A
 
             for base, num_mutations in zip(dna_bases, [A, C, G, T]):
@@ -248,8 +265,7 @@ def from_mutpos(mutpos_file, ref_file, clonality=(0, 1), min_depth=100, kmer=3,
 
                 for _ in range(num_mutations):
                     mutation = Mutation(ref, base, chrom, position, context)
-                    mutation.depth = depth
-                    mutation.clonality = base_clonality
+                    mutation.depth, mutation.clonality = depth, base_clonality
                     mutations.append(mutation)
 
     if verbose is True:
@@ -312,153 +328,73 @@ def get_kmer(record_dict, chromosome, position, k=3, pos='mid'):
         return None
 
 
-def spectrum(heights, xlabels=None, ax=None, yerr=None, ylabel='',
-             annot=None, annot_minimum=0.075, y_max=None, **kwargs):
+def spectrum(heights, ax=None, xlabels=None, y_max=None, **kwargs):
 
-    # Create a canvas to plot on if one is not supplied
     if ax is None:
         ax = plt.gca()
+    ax = ticks_off(cleanup_chart_junk(ax))
+    ax.yaxis.grid(True, color=str(0.8), ls='-')
 
-    ax.grid(False)
-    ax.patch.set_facecolor('white')
-    # ax.yaxis.grid(True, color=str(0.8), linestyle='-')
+    ax.set_xlim([-0.5, len(heights)])
+    if y_max is not None:
+        ax.set_ylim(ax.get_ylim()[0], y_max)
 
-    bar_width = kwargs.pop('bar_width', 0.55)
+    bar_width = kwargs.pop('bar_width', 0.85)
 
     bars = ax.bar(left=range(len(heights)),
                   height=heights,
                   width=bar_width,
-                  zorder=2.7)
+                  zorder=3)
 
-    # Trim a little xlim off the left and right for better symmetry overall
-    ax.set_xlim([-0.25, len(heights)])
-    if y_max is not None:
-        ax.set_ylim(0, y_max)
-
-    # Remove all ticklines
-    for tic in ax.xaxis.get_major_ticks():
-        tic.tick1On = tic.tick2On = False
-    for tic in ax.yaxis.get_major_ticks():
-        tic.tick1On = tic.tick2On = False
-
-    # Turn off top and right spines while coloring bottom and left
-    ax.spines['bottom'].set_color(sig_palette['almost_black'])
-    ax.spines['bottom'].set_zorder(4)
-    ax.spines['left'].set_color(sig_palette['almost_black'])
-    ax.spines['right'].set_visible(True)
-    ax.spines['top'].set_visible(True)
-
-    # Add xtick indexes and labels using monospace font
-    xticklabel_fontsize = kwargs.pop('xticklabel_fontsize', 12)
-    ax.axhline(0, linewidth=1, color=sig_palette['almost_black'])
-    xticks = []
-
-    for tick in range(len(heights)):
-        xticks.append(tick + bar_width / 2)
-    ax.set_xticks(xticks)
-
-    if xlabels is None:
-        ax.set_xticklabels([''] * len(heights))
-    else:
-        ax.set_xticklabels(xlabels,
-                           fontsize=xticklabel_fontsize,
-                           family='monospace',
-                           rotation='vertical',
-                           color=sig_palette['almost_black'])
-
-    # Give all labels an almost black color
-    ax.xaxis.label.set_color(sig_palette['black'])
-    ax.yaxis.label.set_color(sig_palette['black'])
-
-    if 'title' in kwargs and kwargs['title'] is not None:
-        ax.set_title(kwargs.pop('title', ''),
-                     fontsize=kwargs.pop('title_fontsize', 18),
-                     color=sig_palette['black'],
-                     y=0.84)
-
-    # Color bars
-    for i, j in itertools.product(range(6), range(16)):
-        bar_number = (i * 16) + j
-        bars[bar_number].set_color(spectrum_colors[i])
-
-    # Create a pos/neg yerr tuple of all zeroes unless provided
-    if yerr is not None:
-        yerr = ([0] * len(yerr), yerr)
-        ax.errorbar(xticks,
-                    heights,
-                    yerr=yerr,
-                    fmt='none',
-                    color='#6283B9',
-                    ecolor='#6283B9',
-                    capsize=0,
-                    linewidth=2)
-
-    if annot is not None:
-        y_bias = [_ + max(heights) / 20 for _ in yerr[1]]
-
-        for i, rect in enumerate(bars):
-
-            x = rect.get_width() / 2 + rect.get_x() + 0.1
-            y = rect.get_height() + y_bias[i]
-
-            if y > max(heights) * annot_minimum:
-                ax.text(x, y,
-                        '{:1.2g}'.format(annot[i]),
-                        ha='center',
-                        va='bottom',
-                        rotation=90,
-                        fontsize=9)
-    ax.set_ylabel(ylabel)
+    for i, color in enumerate([c for c in sig_colors for _ in range(16)]):
+        bars[i].set_color(color)
+    print(len(heights))
+    ax.set_xticks([tick + bar_width / 2 for tick in range(len(heights))])
+    ax.set_xticklabels(xlabels, family='monospace', rotation=90)
+    ax.set_ylabel('Percent of Mutations')
+    ax.set_title(kwargs.pop('title', None), y=0.84)
     return ax
 
 
-def spectrum_map(x, y, heights, xlabels=None, yerr=None, labels=None,
-                 titles=None, annot=None, x_inches=14, annot_minimum=0.075,
-                 y_max=None, ylabel='', **kwargs):
+def spectrum_map(nrow, ncol, heights, xlabels=None, yerr=None, labels=None,
+                 titles=None, annot=None, x_inches=14, annot_minimum=0.075):
 
-    y_inches = (x_inches * y) / 2.75
-    x_inches = x_inches * x
+    aspect = 4 / 11
+    fig, axes = plt.subplots(nrow, ncol,
+                             figsize=(x_inches * aspect * nrow,
+                                      x_inches * aspect * nrow * ncol),
+                             gridspec_kw={'height_ratios': nrow * [28, 1],
+                                          'hspace': 0.01,
+                                          'wspace': 0.07})
 
-    plt.figure(figsize=(x_inches, y_inches),
-               facecolor='white',
-               dpi=kwargs.pop('dpi', 400))
+    axes_iter = iter(enumerate(axes.flatten()))
 
-    gs1 = gridspec.GridSpec(y * 2, x, height_ratios=[28, 1] * y)
-    gs1.update(hspace=0.3, wspace=0.07)
-    gs2 = gridspec.GridSpec(y * 2, x, height_ratios=[28, 1] * y)
-    gs2.update(hspace=0.3, wspace=0.07)
+    for column in range(ncol * 2):
+        if column % 2 == 0:
+            for i, ax in [next(axes_iter) for _ in range(nrow)]:
+                if i >= len(heights):
+                    ax = axes_off(ax)
+                    continue
 
-    bools = y * list([True] * x + [False] * x)
-    index = 0
-    hanging = len(heights) % x
-    for ax_num, to_plot in enumerate(bools):
+                spectrum(
+                    heights[i],
+                    ax=ax,
+                    xlabels=None if xlabels is None else xlabels[i],
+                    yerr=None if yerr is None else yerr[i],
+                    annot=None if annot is None else annot[i],
+                    title=None if titles is None else titles[i])
+        else:
+            for i, ax in [next(axes_iter) for _ in range(nrow)]:
+                if i >= len(heights):
+                    ax = axes_off(ax)
+                    continue
 
-        if ((ax_num / 2) + 1 >= len(heights) and
-                hanging != 0 and
-                (ax_num % x) >= hanging and
-                to_plot is False):
-            continue
-        xlabels = None if xlabels is None else xlabels[index]
-        if to_plot is True and ax_num / 2 + 1 <= len(heights):
-            bars = spectrum(heights[index],
-                            y_max=y_max,
-                            xlabels=xlabels,
-                            ylabel=ylabel,
-                            annot=None if annot is None else annot[index],
-                            yerr=None if yerr is None else yerr[index],
-                            ax=plt.subplot(gs1[ax_num]),
-                            bar_width=0.68,
-                            title=None if titles is None else titles[index])
-            bars.set_xlim(-0.5, bars.get_xlim()[1])
-            index += 1
-
-        elif to_plot is False and ax_num / 2 <= len(heights):
-            colored_bins(division=6,
-                         span=16,
-                         ax=plt.subplot(gs2[ax_num]),
-                         colors=spectrum_colors,
-                         labels=labels,
-                         padding=0.0025)
+                colored_bins(
+                    division=6,
+                    ax=ax,
+                    colors=sig_colors,
+                    labels=labels)
+    return fig, axes
 
 
 def main():

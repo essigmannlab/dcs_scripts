@@ -1,10 +1,11 @@
 ```
-usage: mcs.py [-h] -r REF_FILE -m MUTPOS_FILE [-c MIN_CLONALITY]
-              [-C MAX_CLONALITY] [-d MIN_DEPTH] [-n NOTATION] [-i DPI]
-              [-f FORMAT] [-y YMAX] [-s SAVE] [-t TITLE] [-l LAB]
+usage: mutpos_parse.py [-h] -r REF_FILE -m MUTPOS_FILE [-c MIN_CLONALITY]
+                       [-C MAX_CLONALITY] [-d MIN_DEPTH] [-n NOTATION]
+                       [-i DPI] [-f FORMAT] [-y YMAX] [-s SAVE] [-t TITLE]
+                       [--lab LAB]
 
 Find the non-normalized trinucleotide mutation frequencies from parsing a
-FASTA reference and .mutpos file as outputted from the duplex sequencing
+FASTA reference and .mutpos file as outputted from theduplex sequencing
 pipeline.
 
 optional arguments:
@@ -34,5 +35,6 @@ optional arguments:
                         Plot title to be overlayed if supplied. The default
                         option creates an informative title. Type None for no
                         title.
-  -l LAB, --lab LAB     Laboratory running program in [loeb].
+  --lab LAB             Mutpos file format (loeb, essigmann, wesdirect)
+                        [loeb].
 ```
