@@ -2,35 +2,16 @@
 
 import os
 import argparse
-import itertools
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from Bio import SeqIO
 from openpyxl import Workbook
 from collections import OrderedDict
+from itertools import cycle, product
 from matplotlib.patches import Rectangle
 from Bio.Seq import Seq, reverse_complement
 from openpyxl.styles import Font, colors, PatternFill
-
-mpl.rc('axes', lw=1, ec="#222222", fc='white', labelcolor="#222222")
-mpl.rc('axes.spines', bottom=True, left=True, top=False, right=False)
-mpl.rc('figure', fc='white')
-mpl.rc('font', size=12)
-mpl.rc('legend',
-       frameon=False,
-       markerscale=0.85,
-       numpoints=1,
-       scatterpoints=1)
-mpl.rc('lines', lw=0.8, color="#222222", solid_capstyle='butt')
-mpl.rc('savefig', dpi=200, fc='#f9f9f9', transparent=False)
-mpl.rc('text', usetex=False, color="#222222")
-mpl.rc('xtick', labelsize=10, color="#222222", direction='out')
-mpl.rc('ytick', labelsize=10, color="#222222", direction='out')
-mpl.rc('xtick.major', size=6, width=1)
-mpl.rc('xtick.minor', size=3, width=1)
-mpl.rc('ytick.major', size=6, width=1)
-mpl.rc('ytick.minor', size=3, width=1)
 
 purines, pyrimidines = ('A', 'G'), ('C', 'T')
 dna_bases = sorted(purines + pyrimidines)
@@ -142,8 +123,7 @@ def colored_bins(division, ax=None, colors=None, labels=None, padding=0):
 
     ax = axes_off(despine(ticks_off(cleanup_chart_junk(ax))))
 
-    if colors is None:
-        colors = itertools.cycle('#222222')
+    colors = cycle(['0.8']) if colors is None else cycle(colors)
 
     for bin in range(division):
         ax.add_patch(Rectangle(xy=(bin / division, 0),
@@ -175,7 +155,7 @@ def dna_kmers(k=3):
         Alphabetically sorted cartesian product of all DNA kmers of
         length k.
     """
-    for prod in itertools.product(dna_bases, repeat=k):
+    for prod in product(dna_bases, repeat=k):
         yield ''.join(prod)
 
 
@@ -339,7 +319,7 @@ def spectrum(heights, ax=None, xlabels=None, y_max=None, **kwargs):
     if y_max is not None:
         ax.set_ylim(ax.get_ylim()[0], y_max)
 
-    bar_width = kwargs.pop('bar_width', 0.85)
+    bar_width = kwargs.pop('bar_width', 0.65)
 
     bars = ax.bar(left=range(len(heights)),
                   height=heights,
@@ -348,23 +328,23 @@ def spectrum(heights, ax=None, xlabels=None, y_max=None, **kwargs):
 
     for i, color in enumerate([c for c in sig_colors for _ in range(16)]):
         bars[i].set_color(color)
-    print(len(heights))
+
     ax.set_xticks([tick + bar_width / 2 for tick in range(len(heights))])
     ax.set_xticklabels(xlabels, family='monospace', rotation=90)
-    ax.set_ylabel('Percent of Mutations')
+    ax.set_ylabel(kwargs.pop('ylabel', 'Percent of Mutations'))
     ax.set_title(kwargs.pop('title', None), y=0.84)
     return ax
 
 
-def spectrum_map(nrow, ncol, heights, xlabels=None, yerr=None, labels=None,
-                 titles=None, annot=None, x_inches=14, annot_minimum=0.075):
+def spectrum_map(nrow, ncol, heights, xlabels=None, labels=None, y_max=None,
+                 titles=None, x_inches=16, ylabel=None):
 
     aspect = 4 / 11
-    fig, axes = plt.subplots(nrow, ncol,
-                             figsize=(x_inches * aspect * nrow,
-                                      x_inches * aspect * nrow * ncol),
+    fig, axes = plt.subplots(nrow * 2, ncol,
+                             figsize=(x_inches * ncol,
+                                      x_inches * nrow * aspect),
                              gridspec_kw={'height_ratios': nrow * [28, 1],
-                                          'hspace': 0.01,
+                                          'hspace': 0.2,
                                           'wspace': 0.07})
 
     axes_iter = iter(enumerate(axes.flatten()))
@@ -372,20 +352,20 @@ def spectrum_map(nrow, ncol, heights, xlabels=None, yerr=None, labels=None,
     for column in range(ncol * 2):
         if column % 2 == 0:
             for i, ax in [next(axes_iter) for _ in range(nrow)]:
-                if i >= len(heights):
+                if i >= len(heights) * 2:
                     ax = axes_off(ax)
                     continue
 
                 spectrum(
                     heights[i],
                     ax=ax,
+                    y_max=y_max,
+                    ylabel=ylabel,
                     xlabels=None if xlabels is None else xlabels[i],
-                    yerr=None if yerr is None else yerr[i],
-                    annot=None if annot is None else annot[i],
                     title=None if titles is None else titles[i])
         else:
             for i, ax in [next(axes_iter) for _ in range(nrow)]:
-                if i >= len(heights):
+                if i >= len(heights) * 2:
                     ax = axes_off(ax)
                     continue
 
@@ -529,13 +509,12 @@ def main():
     ws = wb.active
     ws.append(['Substitution', 'Context', 'Count', 'Proportion'])
 
-    black = PatternFill(start_color=colors.BLACK,
-                        end_color=colors.BLACK,
-                        fill_type='solid')
-
     for letter in 'ABCD':
-        ws[letter + '1'].fill = black
-        ws[letter + '1'].font = Font(color=colors.WHITE)
+        ws[letter + '1'].fill = PatternFill(start_color=colors.BLACK,
+                                            end_color=colors.BLACK,
+                                            fill_type='solid')
+        ws[letter + '1'].font = Font(color=colors.WHITE)\
+
     for (substitution, context), counts in data.items():
         ws.append([substitution,
                    context,
@@ -557,8 +536,7 @@ def main():
 
     # Render plots and save
     if args.save == 'both' or args.save == 'ratio':
-        spectrum_map(x=1, y=1,
-                     x_inches=16,
+        spectrum_map(nrow=1, ncol=1,
                      heights=[[x * 100 for x in data.proportion]],
                      xlabels=[list(zip(*data.keys()))[1]],
                      labels=sorted(set(list(zip(*data.keys()))[0])),
@@ -568,8 +546,7 @@ def main():
         plt.savefig(image_file1)
 
     if args.save == 'both' or args.save == 'total':
-        spectrum_map(x=1, y=1,
-                     x_inches=16,
+        spectrum_map(nrow=1, ncol=1,
                      heights=[list(data.values())],
                      xlabels=[list(zip(*data.keys()))[1]],
                      labels=sorted(set(list(zip(*data.keys()))[0])),
