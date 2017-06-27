@@ -1,0 +1,15 @@
+id:
+  160701-6211: "Identifying number of this run."
+
+samples:
+  160701Ess_D16-6211_1_sequence: "First read of the mouse sequence."
+  160701Ess_D16-6211_2_sequence: "Second read of the mouse sequence."
+
+reference: EG10
+
+minDepth: 100
+minClonality: 0
+maxClonality: 0.01
+
+picard: ~/dependencies/picard-tools-1.119
+GATK: ~/dependencies/GATK
