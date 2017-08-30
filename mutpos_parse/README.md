@@ -1,11 +1,10 @@
 # DCS Post-Processing
-_Author_: Lina Kim, klkim [at] mit dot edu; Essigmann Lab, MIT
-
-_Version_: 2.0
-
-_Date_: 08/29/17
-
-NOTE: first step is **source activate mutpos_parse**
+### _Author_:
+Lina Kim, klkim [at] mit dot edu; Essigmann Lab, MIT
+### _Version_: 
+2.0
+### _Date_: 
+08/29/17
 
 ```
 usage: bash figures.sh [-h] -r REFERENCE_FASTA -m MUTPOS_FILE -o OUT_FILE [-c MIN_CLONALITY] [-l MAX_CLONALITY] [-d MIN_DEPTH] [-n NOTATION]
