@@ -1,8 +1,9 @@
 # DCS Post-Processing
-Author: Lina Kim, klkim [at] mit dot edu
-     	  Essigmann Lab, MIT
-Version: 2.0
-Date: 08/29/17
+_Author_: Lina Kim, klkim [at] mit dot edu; Essigmann Lab, MIT
+
+_Version_: 2.0
+
+_Date_: 08/29/17
 
 NOTE: first step is **source activate mutpos_parse**
 
