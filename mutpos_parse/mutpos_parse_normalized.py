@@ -86,6 +86,15 @@ class Mutation(object):
                                                       self.chrom,
                                                       self.position)
 
+###----- Lina's code here
+def context_dict(file):
+    contexts = {}
+    f = open(file, 'r')
+    for line in f:
+        tri,count = line.split()
+        contexts[tri] = int(count)
+    return contexts
+###-----
 
 class Spectrum(OrderedDict):
     def __init__(self, notation, kmer=3):
@@ -176,6 +185,8 @@ def from_mutpos(mutpos_file, ref_file, clonality=(0, 1), min_depth=100, kmer=3,
         for line in handle:
             # Strip newline characters and split on tabs
             line = line.strip().split('\t')
+#            if isinstance(line[0],str):
+#                continue
 
             # Unpack line and cast to proper data type
             chrom, ref = str(line[0]), str(line[1]).upper()
@@ -217,7 +228,7 @@ def from_mutpos(mutpos_file, ref_file, clonality=(0, 1), min_depth=100, kmer=3,
             # chromosome as looked up in record_dict. If we encounter an
             # edge case (return of None) we'll skip this loop
             context = str(get_kmer(record_dict, chrom, position, kmer)).upper()
-
+            print(context)
             if context is None:
                 continue
 
@@ -247,6 +258,7 @@ def from_mutpos(mutpos_file, ref_file, clonality=(0, 1), min_depth=100, kmer=3,
                     mutation = Mutation(ref, base, chrom, position, context)
                     mutation.depth, mutation.clonality = depth, base_clonality
                     mutations.append(mutation)
+                    print(mutation.context)
 
     if verbose is True:
         print('Found {} Mutations'.format(len(mutations)))
@@ -386,7 +398,13 @@ def main():
                         action="store",
                         type=str,
                         dest="ref_file",
-                        help="The reference genome in FASTA format.",
+                        help="The reference kmer count, in txt format.", # changed
+                        required=True)
+    parser.add_argument("-a", "--fasta_ref",
+                        action="store",
+                        type=str,
+                        dest="fasta_ref",
+                        help="The reference genome in FASTA format.", # changed
                         required=True)
     parser.add_argument("-m", "--mutpos_file",
                         action="store",
@@ -451,7 +469,7 @@ def main():
     parser.add_argument("-s", "--save",
                         type=str,
                         dest="save",
-                        default='both',
+                        default='total',
                         help=("Whether to save both, ratio, or total "
                               "[both]."),
                         required=False)
@@ -470,7 +488,11 @@ def main():
                         help=("Mutpos file format (loeb, essigmann, "
                               "wesdirect) [loeb]."),
                         required=False)
-
+    parser.add_argument("-o","--out_plot",
+                        type=str,
+                        dest="out_plot",
+                        help=("File name for the output plot."),
+                        required=True)
     args = parser.parse_args()
 
     # Set up local variables
@@ -489,10 +511,12 @@ def main():
         image_file1 = mutpos_name + '-ratio.' + args.format
         image_file2 = mutpos_name + '-total.' + args.format
         data_file = mutpos_name + '.xlsx'
+		
+    out_plot = args.out_plot + '.' + args.format
 
     # Parse mutpos file
     mutations = from_mutpos(args.mutpos_file,
-                            args.ref_file,
+                            args.fasta_ref,
                             clonality=clonality,
                             min_depth=args.min_depth,
                             notation=args.notation,
@@ -500,14 +524,35 @@ def main():
                             verbose=True)
 
     data = Spectrum(notation=args.notation, kmer=3)
-
     for mutation in mutations:
+        print(mutation.substitution, mutation.context)
         data[str(mutation.substitution), str(mutation.context)] += 1
+#        if (str(mutation.substitution),str(mutation.context)) in data.keys():
+#            data[str(mutation.substitution), str(mutation.context)] += 1
+
+    ###----- LINA'S CODE BEGINS HERE
+    # Change code here to normalize for context frequencies
+    # make modifications to dictionary data
+    contexts = context_dict(args.ref_file)
+
+    # Divide by trinucleotide context frequencies
+    count_dict = {}
+    for key in data.keys():
+        sub, con = key
+        count_dict[key] = data[key]
+        data[key] = data[key]/float(contexts[con])
+
+    # Normalize
+    all_counts = sum(count_dict.values())
+    total = sum(data.values())
+    for key in data.keys():
+        data[key] = data[key]/total
+    ###-----
 
     # Format and save to Excel
     wb = Workbook()
     ws = wb.active
-    ws.append(['Substitution', 'Context', 'Count', 'Proportion'])
+    ws.append(['Substitution', 'Context', 'Mutation Count', 'Normalized Proportion'])
 
     for letter in 'ABCD':
         ws[letter + '1'].fill = PatternFill(start_color=colors.BLACK,
@@ -518,8 +563,8 @@ def main():
     for (substitution, context), counts in data.items():
         ws.append([substitution,
                    context,
-                   counts,
-                   counts / sum(data.values())])
+                   count_dict[(substitution, context)],
+                   counts])
 
     wb.save(data_file)
 
@@ -527,12 +572,13 @@ def main():
         title = None
     elif args.title == '':
         title = '{}\n($n={}$)'
-        title = title.format(args.mutpos_file, sum(data.values()))
+        title = title.format(args.mutpos_file, str(all_counts))
     else:
-        title = args.title + '\n($n={}$)'.format(sum(data.values()))
+        title = args.title + '\n($n={}$)'.format(str(all_counts))
 
     if args.ymax is not None:
         args.ymax = float(args.ymax)
+
 
     # Render plots and save
     if args.save == 'both' or args.save == 'ratio':
@@ -545,15 +591,16 @@ def main():
                      y_max=args.ymax)
         plt.savefig(image_file1)
 
+
     if args.save == 'both' or args.save == 'total':
         spectrum_map(nrow=1, ncol=1,
                      heights=[list(data.values())],
                      xlabels=[list(zip(*data.keys()))[1]],
                      labels=sorted(set(list(zip(*data.keys()))[0])),
                      titles=[title],
-                     ylabel='Number of Mutations',
+                     ylabel='Frequency of Mutations',
                      y_max=args.ymax)
-        plt.savefig(image_file2)
+        plt.savefig(out_plot)
 
 
 if __name__ == '__main__':
