@@ -1,11 +1,12 @@
 # DCS Post-Processing
-# Author: Lina Kim, klkim [at] mit dot edu
-# 	  Essigmann Lab, MIT
-# Version: 2.0
-# Date: 08/29/17
+Author: Lina Kim, klkim [at] mit dot edu
+     	  Essigmann Lab, MIT
+Version: 2.0
+Date: 08/29/17
 
 NOTE: first step is **source activate mutpos_parse**
 
+```
 usage: bash figures.sh [-h] -r REFERENCE_FASTA -m MUTPOS_FILE -o OUT_FILE [-c MIN_CLONALITY] [-l MAX_CLONALITY] [-d MIN_DEPTH] [-n NOTATION]
 
 Find the normalized trinucleotide mutation frequencies from parsing a FASTA reference and .mutpos file as outputted from the duplex sequencing pipeline.
@@ -29,3 +30,4 @@ optional arguments:
   -n NOTATION, --notation NOTATION
                         This is useful for labelling figures aspurines or
                         pyrimidines. [pyrimidine]
+```
