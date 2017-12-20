@@ -1,37 +1,12 @@
 #!/bin/bash
 # Counter for trinucleotide contexts using Jellyfish
-# Input:  fasta file
-# Outputs:  text file with context counts
-# Dependencies: Python, Jellyfish, dependencies of mutpos_parse_normalized.py
-
-# Default parameters
-min_clon=0
-max_clon=0.2
-min_depth=100
-notation='pyrimidine'
-
-# Help message
-help="usage: figures.sh -r REFERENCE_FASTA -m MUTPOS_FILE -o OUT_FILE [-c MIN_CLONALITY] [-l MAX_CLONALITY] [-d MIN_DEPTH] [-n NOTATION] [-h HELP]"
-
-while getopts r:m:o:c::l::d::n::h option
-do
-  case "${option}"
-  in
-  r) REF_FILE=${OPTARG};;
-  m) MUTPOS_FILE=${OPTARG};;
-  o) OUT_FILE=${OPTARG};;
-  c) min_clon=${OPTARG};;
-  l) max_clon=${OPTARG};;
-  d) min_depth=${OPTARG};;
-  n) notation=${OPTARG};;
-  h) echo "$help"
-     exit;;
-  esac
-done
+# Input:  FASTA reference, mutpos file(s) to plot
+# Outputs:  text file with context counts; four mutational spectra (combination of total/unique muts, frequencies/proportions); Excel file with substitution counts
+# Dependencies: Python, Jellyfish, dependencies of mutpos_update.py
 
 ###----- PARAMETERS -----
-#REF_FILE='EG10_custom.fasta' # Assumes it has a header line
-#MUTPOS_FILE='/media/sf_share/triplicate_analysis/x6614-16.mutpos' # Assumes no header?
+REF_FILE='data/ref/EG10_custom.fasta' # Assumes it has a header line
+declare -a files=('data/a10_ucm.mutpos') # Allows for multiple mutpos files at once
 ###----- END -----
 
 declare -a CONTEXT=('ACA' 'ACC' 'ACG' 'ACT'
@@ -40,25 +15,35 @@ declare -a CONTEXT=('ACA' 'ACC' 'ACG' 'ACT'
                     'CTA' 'CTC' 'CTG' 'CTT'
                     'GCA' 'GCC' 'GCG' 'GCT'
                     'GTA' 'GTC' 'GTG' 'GTT'
-                    'TCA' 'TCC' 'TCG' 'TCT' 
-					'TTA' 'TTC' 'TTG' 'TTT');
+                    'TCA' 'TCC' 'TCG' 'TCT'
+                    'TTA' 'TTC' 'TTG' 'TTT'
+		    'AAA' 'AAC' 'AAG' 'AAT'
+                    'AGA' 'AGC' 'AGG' 'AGT'
+                    'CGA' 'CGC' 'CGG' 'CGT'
+                    'CAA' 'CAC' 'CAG' 'CAT'
+                    'GGA' 'GGC' 'GGG' 'GGT'
+                    'GAA' 'GAC' 'GAG' 'GAT'
+                    'TGA' 'TGC' 'TGG' 'TGT'
+                    'TAA' 'TAC' 'TAG' 'TAT');
 
 JF_FILE='jf_counter.jf'
-JF_OUT='jf_counted.txt'
-rm $JF_FILE
-rm $JF_OUT
-touch $JF_OUT
+OUT_FILE='ref_counts.txt'
+
+touch $OUT_FILE
 
 jellyfish count -m 3 -s 10M -C $REF_FILE -o $JF_FILE
 
 for i in "${CONTEXT[@]}"
 do
   COUNT=$(jellyfish query $JF_FILE $i | cut -d ' ' -f2)
-  echo $i $COUNT >> $JF_OUT
+  echo $i $COUNT >> $OUT_FILE
   echo $i 'has been counted'
   echo $COUNT
 done
 
-python mutpos_parse_normalized.py -r $JF_OUT -a $REF_FILE -m $MUTPOS_FILE -c $min_clon -C $max_clon -d $min_depth -n $notation -o $OUT_FILE
-
-#Rscript trinucleotide-graphs.r $JF_OUT --save
+for fi in ${files[@]}; do
+  python mutpos_update.py -k $OUT_FILE -a $REF_FILE -m $fi -u "unique" -p "frequencies"
+  python mutpos_update.py -k $OUT_FILE -a $REF_FILE -m $fi -u "total" -p "frequencies"
+  python mutpos_update.py -k $OUT_FILE -a $REF_FILE -m $fi -u "unique" -p "proportions"
+  python mutpos_update.py -k $OUT_FILE -a $REF_FILE -m $fi -u "total" -p "proportions"
+done
