@@ -4,9 +4,8 @@ Lina Kim, klkim [at] mit dot edu; Essigmann Lab, MIT
 ### _Version_: 
 2.5
 ### _Date_:
-2.5: 12/20/17
-
-2.0: 08/29/17
+* 2.5: 12/20/17
+* 2.0: 08/29/17
 
 ```
 usage: bash figures.sh [-h] -r REFERENCE_FASTA -m MUTPOS_FILE -o OUT_FILE [-c MIN_CLONALITY] [-l MAX_CLONALITY] [-d MIN_DEPTH] [-n NOTATION]
