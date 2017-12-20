@@ -1,80 +1,30 @@
 #!/bin/bash
 # Counter for trinucleotide contexts using Jellyfish
-# Input:  fasta file
-# Outputs:  text file with context counts
-# Dependencies: Python, Jellyfish, dependencies of mutpos_parse_normalized.py
+# Input:  FASTA reference, mutpos file(s) to plot
+# Outputs:  text file with context counts; four mutational spectra (combination of total/unique muts, frequencies/proportions); Excel file with substitution counts
+# Dependencies: Python, Jellyfish, dependencies of mutpos_update.py
 
 ###----- PARAMETERS -----
 REF_FILE='data/ref/EG10_custom.fasta' # Assumes it has a header line
-#MUTPOS_FILE='data/160701Ess_D16-6210.mutpos' # Assumes no header?
-declare -a files=('data/a10_ucm.mutpos'
-		  )
+declare -a files=('data/a10_ucm.mutpos') # Allows for multiple mutpos files at once
 ###----- END -----
 
-declare -a CONTEXT=('ACA'
-                    'ACC'
-                    'ACG'
-                    'ACT'
-                    'ATA'
-                    'ATC'
-                    'ATG'
-                    'ATT'
-                    'CCA'
-                    'CCC'
-                    'CCG'
-                    'CCT'
-                    'CTA'
-                    'CTC'
-                    'CTG'
-                    'CTT'
-                    'GCA'
-                    'GCC'
-                    'GCG'
-                    'GCT'
-                    'GTA'
-                    'GTC'
-                    'GTG'
-                    'GTT'
-                    'TCA'
-                    'TCC'
-                    'TCG'
-                    'TCT'
-                    'TTA'
-                    'TTC'
-                    'TTG'
-                    'TTT'
-		    'AAA'
-                    'AAC'
-                    'AAG'
-                    'AAT'
-                    'AGA'
-                    'AGC'
-                    'AGG'
-                    'AGT'
-                    'CGA'
-                    'CGC'
-                    'CGG'
-                    'CGT'
-                    'CAA'
-                    'CAC'
-                    'CAG'
-                    'CAT'
-                    'GGA'
-                    'GGC'
-                    'GGG'
-                    'GGT'
-                    'GAA'
-                    'GAC'
-                    'GAG'
-                    'GAT'
-                    'TGA'
-                    'TGC'
-                    'TGG'
-                    'TGT'
-                    'TAA'
-                    'TAC'
-                    'TAG'
-                    'TAT');
+declare -a CONTEXT=('ACA' 'ACC' 'ACG' 'ACT'
+                    'ATA' 'ATC' 'ATG' 'ATT'
+                    'CCA' 'CCC' 'CCG' 'CCT'
+                    'CTA' 'CTC' 'CTG' 'CTT'
+                    'GCA' 'GCC' 'GCG' 'GCT'
+                    'GTA' 'GTC' 'GTG' 'GTT'
+                    'TCA' 'TCC' 'TCG' 'TCT'
+                    'TTA' 'TTC' 'TTG' 'TTT'
+		    'AAA' 'AAC' 'AAG' 'AAT'
+                    'AGA' 'AGC' 'AGG' 'AGT'
+                    'CGA' 'CGC' 'CGG' 'CGT'
+                    'CAA' 'CAC' 'CAG' 'CAT'
+                    'GGA' 'GGC' 'GGG' 'GGT'
+                    'GAA' 'GAC' 'GAG' 'GAT'
+                    'TGA' 'TGC' 'TGG' 'TGT'
+                    'TAA' 'TAC' 'TAG' 'TAT');
 
 JF_FILE='jf_counter.jf'
 OUT_FILE='ref_counts.txt'
@@ -97,4 +47,3 @@ for fi in ${files[@]}; do
   python mutpos_update.py -k $OUT_FILE -a $REF_FILE -m $fi -u "unique" -p "proportions"
   python mutpos_update.py -k $OUT_FILE -a $REF_FILE -m $fi -u "total" -p "proportions"
 done
-#Rscript trinucleotide-graphs.r $OUT_FILE --save
