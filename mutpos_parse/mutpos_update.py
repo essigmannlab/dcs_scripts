@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # Changes:
 #    Removed 'lab' option, making Essigmann Lab default
-#    Changed default max_clonality value from 0.2 to 0.01
+#    Changed default max_clonality value from 0.2 to 1
 #    (from mutpos_parse_normalized) Add context_dict to count frequencies of mutations and normalize right before plotting
 #    Normalize for context frequencies in the spectrum dictionary
 #    Plot spectrum with purine labels instead of pyrimidines, but in the same order
 #    Scoot over context labels 0.25 units to the left, for better centering with bars
+#    Changed output data file from Excel spreadsheet to CSV
 #    TODO: Add option for more detailed title description
 
 import os
@@ -128,13 +129,6 @@ class Spectrum(OrderedDict):
             else:
                 self[sub,con] = 0
 
-        # substitutions = py_labels if notation == 'pyrimidine' else pu_labels
-        #
-        # for substitution in substitutions:
-        #     for context in dna_kmers(self.kmer):
-        #         if context[int((self.kmer - 1) / 2)] == substitution[0]:
-        #             self[substitution, context] = 0
-
     @property
     def variant_total(self):
         return sum(self.values())
@@ -209,7 +203,6 @@ def from_mutpos(mutpos_file, ref_file, clonality=(0, 0.01), min_depth=100, kmer=
             # Unpack line and cast to proper data type
             chrom, ref = str(line[0]), str(line[1]).upper()
             position, depth = int(line[2]) - 1, int(line[3])
-#            position, depth = int(line[2]), int(line[3])
 
             if chromosome is not None and chrom != chromosome:
                 continue
@@ -218,9 +211,7 @@ def from_mutpos(mutpos_file, ref_file, clonality=(0, 0.01), min_depth=100, kmer=
             if end is not None and position >= end:
                 continue
 
-#            A, C, G, T, N = map(int, line[4:9]) # for older mutpos files
             T, C, G, A, N = map(int, line[5:10])
-#            T, G, C, A, N = map(int, line[5:10])
 
             # If we see no observed base substitutions, skip this loop
             if sum([A, C, G, T]) == 0:
@@ -260,19 +251,16 @@ def from_mutpos(mutpos_file, ref_file, clonality=(0, 0.01), min_depth=100, kmer=
                 if unique == "unique":
                     if num_mutations > 0:
                         num_mutations = 1
-                    # if not min(clonality) <= base_clonality <= max(clonality):
-                    #     continue
 
                 for _ in range(num_mutations):
                     mutation = Mutation(ref, base, chrom, position, context)
-                    # mutation = (Mutation(ref, base, chrom, position, context), num_mutations)
                     mutation.depth, mutation.clonality = depth, base_clonality
                     mutations.append(mutation)
 
     if verbose:
+        print('For ' + mutpos_file + ': ')
         print('Found {} Mutations'.format(len(mutations)))
 
-#    print(mutations)
     return mutations
 
 
@@ -330,7 +318,6 @@ def get_kmer(record_dict, chromosome, position, k=3, pos='mid'):
     else:
         return None
 
-
 def spectrum(heights, ax=None, xlabels=None, y_max=None, **kwargs):
 
     if ax is None:
@@ -352,7 +339,6 @@ def spectrum(heights, ax=None, xlabels=None, y_max=None, **kwargs):
     for i, color in enumerate([c for c in sig_colors for _ in range(16)]):
         bars[i].set_color(color)
 
-#    ax.set_xticks([tick + bar_width / 2 for tick in range(len(heights))])
     ax.set_xticks([tick - 0.25 + bar_width / 2 for tick in range(len(heights))])
     ax.set_xticklabels(xlabels, family='monospace', rotation=90, fontsize=10)
     ax.set_ylabel(kwargs.pop('ylabel', 'Percent of Mutations'))
@@ -411,13 +397,13 @@ def main():
                         action="store",
                         type=str,
                         dest="kmer_counts",
-                        help="The reference kmer count, in txt format.", # changed
+                        help="The reference kmer count, in txt format.",
                         required=True)
     parser.add_argument("-a", "--fasta_ref",
                         action="store",
                         type=str,
                         dest="fasta_ref",
-                        help="The reference genome in FASTA format.", # changed
+                        help="The reference genome in FASTA format.",
                         required=True)
     parser.add_argument("-m", "--mutpos_file",
                         action="store",
@@ -451,12 +437,6 @@ def main():
                               "default option creates an informative title. "
                               "Type None for no title."),
                         required=False)
-    # parser.add_argument("-s", "--save",
-    #                     type=str,
-    #                     dest="save",
-    #                     default='total',
-    #                     help=("Whether to save both, ratio, or total [both]"),
-    #                     required=False)
     parser.add_argument("-c", "--minClonality",
                         action="store",
                         type=float,
@@ -468,8 +448,8 @@ def main():
                         action="store",
                         type=float,
                         dest="max_clonality",
-                        default=0.01,
-                        help=("The maximum clonality for counting a mutation (inclusive) [0.01]"),
+                        default=1,
+                        help=("The maximum clonality for counting a mutation (inclusive) [1]"),
                         required=False)
     parser.add_argument("-d", "--minDepth",
                         action="store",
@@ -507,16 +487,20 @@ def main():
     clonality = (args.min_clonality, args.max_clonality)
     mutpos_name = os.path.basename(args.mutpos_file)
 
+#    plot_name = mutpos_name.replace('.mutpos', '-' + args.proportions + '.' + args.format)
+#    if args.unique == 'total':
+#
+
     if args.mutpos_file.endswith('.mutpos'):
         image_file1 = mutpos_name.replace('.mutpos',
                                           '-' + args.unique + '-freq.' + args.format)
         image_file2 = mutpos_name.replace('.mutpos',
                                           '-' + args.unique + '-prop.' + args.format)
-        data_file = mutpos_name.replace('.mutpos', '.xlsx')
+        data_file = mutpos_name.replace('.mutpos', '.csv')
     else:
         image_file1 = mutpos_name + '-' + args.unique + '-freq.' + args.format
         image_file2 = mutpos_name + '-' + args.unique + '-prop.' + args.format
-        data_file = mutpos_name + '.xlsx'
+        data_file = mutpos_name + '.csv'
 
     # Parse mutpos file
     # Changed output of mutations to (Mutation, count)
@@ -547,24 +531,11 @@ def main():
     for key in data.keys():
         data[key] = data[key]/total
 
-    # Format and save to Excel
-    wb = Workbook()
-    ws = wb.active
-    ws.append(['Substitution', 'Context', 'Mutation Count', 'Normalized Proportion'])
-
-    for letter in 'ABCD':
-        ws[letter + '1'].fill = PatternFill(start_color=colors.BLACK,
-                                            end_color=colors.BLACK,
-                                            fill_type='solid')
-        ws[letter + '1'].font = Font(color=colors.WHITE)\
-
-    for (substitution, context), counts in data.items():
-        ws.append([substitution,
-                   context,
-                   count_dict[(substitution, context)],
-                   counts])
-
-    wb.save(data_file)
+    # Format and save to CSV
+    with open(data_file, 'w') as fo:
+        fo.write('Substitution,Context,Mutation Count,Normalized Proportion,\n')
+        for (substitution, context), counts in data.items():
+            fo.write(','.join([substitution,context,str(count_dict[(substitution,context)]),str(counts),'\n']))
 
     if args.title.lower() == 'none':
         title = None
@@ -577,10 +548,7 @@ def main():
     if args.ymax is not None:
         args.ymax = float(args.ymax)
 
-#    print(args.unique,args.proportions)
     # Render plots and save
-#    if args.save == 'both' or args.save == 'total':
-
     if args.notation == 'pyrimidine':
         labels = sorted(set(list(zip(*data.keys()))[0]))
     if args.notation == 'purine':
@@ -592,11 +560,10 @@ def main():
                      labels=labels,
                     #  titles=[title],
                      titles=None,
-                     ylabel='Proportions of Mutations',
+                     ylabel='Proportion of Mutations',
                      y_max=args.ymax)
         plt.savefig(image_file2)
 
-    #    if args.save == 'both' or args.save == 'ratio':
     if args.proportions == "frequencies":
         spectrum_map(nrow=1, ncol=1,
                      heights=[list(count_dict.values())],
