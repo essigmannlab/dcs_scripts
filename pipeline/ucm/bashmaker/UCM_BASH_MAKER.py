@@ -119,11 +119,13 @@ def main():
             outBash.write("run_name=" + o.run_name + "\n")
             outBash.write("runID=" + o.runID + "\n")
             outBash.write("samID=" + o.samID + "\n")
-            outBash.write("inp_path=" + o.inp_path + "\n")
-            if o.ref:
-                outBash.write("ref=" + o.ref + "\n")
             if o.endID:
                 outBash.write("endID=" + o.endID + "\n")
+                outBash.write("inp_path=" + o.inp_path + "/" + o.samID + "-" + o.endID + "\n")
+            else:
+                outBash.write("inp_path=" + o.inp_path + "/" + o.samID + "\n")
+            if o.ref:
+                outBash.write("ref=" + o.ref + "\n")
             if o.picard:
                 outBash.write("picard=" + o.picard + "\n")
             if o.GATK:

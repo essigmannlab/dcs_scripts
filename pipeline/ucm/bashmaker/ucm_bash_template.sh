@@ -5,18 +5,19 @@
 #$ -V
 #$ -m e
 #$ -pe whole_nodes 7
-#$ -M klkim@mit.edu
+#$ -M aarmijo@mit.edu
 ###############################
 
 ###----- RECOMMENDED DEFAULTS -----
 picard=/net/bmc-pub7/data0/essigmannlab/dependencies/picard-tools-1.119
 GATK=/net/bmc-pub7/data0/essigmannlab/dependencies/GATK
-DS_path=/net/bmc-pub7/data0/essigmannlab/jobs/UCM/DCS-3.00
-ref=/net/bmc-pub7/data0/essigmannlab/jobs/UCM/ref/EG10_custom.fasta
+DS_path=/net/bmc-pub7/data0/essigmannlab/jobs/dcs/DCS-3.00
+ref=/net/bmc-pub7/data0/essigmannlab/jobs/dcs/ref/EG10_custom.fasta
 
 activate=/net/bmc-pub7/data0/essigmannlab/dependencies/anaconda3/bin/activate;
 ucm=/net/bmc-pub7/data0/essigmannlab/dependencies/anaconda3/envs/ucm/;
 
+endID=''
 minMem=3
 maxMem=1000
 cutOff=0.7
@@ -36,18 +37,14 @@ softclip_cycles='1-8,120-137'
 ###----- NONDEFAULTS -----
 ###----- END -----
 
-# For newer versions:
-#read1=$inp_path/$runID\_$samID\_1\_sequence.fastq
-#read2=$inp_path/$runID\_$samID\_2\_sequence.fastq
-
-# For older FASTQs:
-read1=$inp_path/$runID\_$samID-$endID\_1\_sequence.fastq
-read2=$inp_path/$runID\_$samID-$endID\_2\_sequence.fastq
+read1=$inp_path/$runID\_$samID\_1\_sequence.fastq
+read2=$inp_path/$runID\_$samID\_2\_sequence.fastq
 
 export PATH=/net/bmc-pub7/data0/essigmannlab/dependencies/anaconda3/bin:$PATH
 export PATH=/bin:$PATH
 
 source $activate $ucm;
+cd /net/bmc-pub7/data0/essigmannlab/jobs/dcs
 
 date
 echo 'Beginning UCM run...'
