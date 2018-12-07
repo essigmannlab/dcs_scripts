@@ -12,6 +12,7 @@
 import os
 import argparse
 import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 from Bio import SeqIO
@@ -190,7 +191,7 @@ def fasta_to_dict(ref_file):
 
 def from_mutpos(mutpos_file, ref_file, clonality=(0, 0.01), min_depth=100, kmer=3,
                 chromosome=None, start=0, end=None, notation='pyrimidine',
-                verbose=False, unique="total"):
+                verbose=False):
     mutations = []
     record_dict = fasta_to_dict(ref_file)
 
@@ -199,10 +200,14 @@ def from_mutpos(mutpos_file, ref_file, clonality=(0, 0.01), min_depth=100, kmer=
         for line in handle:
             # Strip newline characters and split on tabs
             line = line.strip().split('\t')
+            if line[0] == 'Chrom': continue
 
             # Unpack line and cast to proper data type
             chrom, ref = str(line[0]), str(line[1]).upper()
             position, depth = int(line[2]) - 1, int(line[3])
+
+            # Added for CDS info in mutpos file
+            chrom = chrom.split(':')[0]
 
             if chromosome is not None and chrom != chromosome:
                 continue
@@ -248,14 +253,14 @@ def from_mutpos(mutpos_file, ref_file, clonality=(0, 0.01), min_depth=100, kmer=
                 # A, we can seletion a clonality filter of (0.1, 0.5) to
                 # eliminate the rare T mutations and clonal G mutations.
                 base_clonality = num_mutations / depth
-                if unique == "unique":
-                    if num_mutations > 0:
-                        num_mutations = 1
+#                if unique == "unique":
+#                    if num_mutations > 0:
+#                        num_mutations = 1
 
                 for _ in range(num_mutations):
                     mutation = Mutation(ref, base, chrom, position, context)
                     mutation.depth, mutation.clonality = depth, base_clonality
-                    mutations.append(mutation)
+                    mutations.append(mutation)                
 
     if verbose:
         print('For ' + mutpos_file + ': ')
@@ -318,7 +323,7 @@ def get_kmer(record_dict, chromosome, position, k=3, pos='mid'):
     else:
         return None
 
-def spectrum(heights, ax=None, xlabels=None, y_max=None, **kwargs):
+def spectrum(heights, ax=None, xlabels=None, y_min=None, y_max=None, **kwargs):
 
     if ax is None:
         ax = plt.gca()
@@ -326,12 +331,16 @@ def spectrum(heights, ax=None, xlabels=None, y_max=None, **kwargs):
     ax.yaxis.grid(True, color=str(0.8), ls='-')
 
     ax.set_xlim([-0.5, len(heights)])
+
     if y_max is not None:
-        ax.set_ylim(ax.get_ylim()[0], y_max)
+        if y_min is not None:
+            ax.set_ylim(y_min,y_max)
+        else:
+            ax.set_ylim(0, y_max)
 
     bar_width = kwargs.pop('bar_width', 0.65)
 
-    bars = ax.bar(left=range(len(heights)),
+    bars = ax.bar(range(len(heights)),
                   height=heights,
                   width=bar_width,
                   zorder=3)
@@ -346,7 +355,7 @@ def spectrum(heights, ax=None, xlabels=None, y_max=None, **kwargs):
     return ax
 
 
-def spectrum_map(nrow, ncol, heights, xlabels=None, labels=None, y_max=None,
+def spectrum_map(nrow, ncol, heights, xlabels=None, labels=None, y_min=None, y_max=None,
                  titles=None, x_inches=16, ylabel=None):
 
     aspect = 4 / 11
@@ -369,6 +378,7 @@ def spectrum_map(nrow, ncol, heights, xlabels=None, labels=None, y_max=None,
                 spectrum(
                     heights[i],
                     ax=ax,
+                    y_min=y_min,
                     y_max=y_max,
                     ylabel=ylabel,
                     xlabels=None if xlabels is None else xlabels[i],
@@ -411,12 +421,6 @@ def main():
                         dest="mutpos_file",
                         help="Input mutpos file.",
                         required=True)
-    parser.add_argument("-u", "--unique",
-                        type=str,
-                        dest="unique",
-                        default="total",
-                        help=("Counting total or unique mutations."),
-                        required=False)
     parser.add_argument("-p", "--proportions",
                         type=str,
                         dest="proportions",
@@ -487,19 +491,15 @@ def main():
     clonality = (args.min_clonality, args.max_clonality)
     mutpos_name = os.path.basename(args.mutpos_file)
 
-#    plot_name = mutpos_name.replace('.mutpos', '-' + args.proportions + '.' + args.format)
-#    if args.unique == 'total':
-#
-
     if args.mutpos_file.endswith('.mutpos'):
         image_file1 = mutpos_name.replace('.mutpos',
-                                          '-' + args.unique + '-freq.' + args.format)
+                                          '-freq.' + args.format)
         image_file2 = mutpos_name.replace('.mutpos',
-                                          '-' + args.unique + '-prop.' + args.format)
+                                          '-prop.' + args.format)
         data_file = mutpos_name.replace('.mutpos', '.csv')
     else:
-        image_file1 = mutpos_name + '-' + args.unique + '-freq.' + args.format
-        image_file2 = mutpos_name + '-' + args.unique + '-prop.' + args.format
+        image_file1 = mutpos_name + '-freq.' + args.format
+        image_file2 = mutpos_name + '-prop.' + args.format
         data_file = mutpos_name + '.csv'
 
     # Parse mutpos file
@@ -508,8 +508,7 @@ def main():
                             args.fasta_ref,
                             min_depth=args.min_depth,
                             notation=args.notation,
-                            verbose=True,
-                            unique=args.unique)
+                            verbose=True)
 
     data = Spectrum(notation=args.notation, kmer=3)
 
