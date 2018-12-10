@@ -1,5 +1,9 @@
 # Mutational Analysis
 
+Draws mutational spectra for given .mutpos files (outputs of DCS pipeline); generates the following files:
+* 2 spectra for each sample's total mutations: normalized ("-prop") and unnormalized ("-freq")
+* 2 spectra for each sample's unique mutations: normalized ("-prop") and unnormalized ("-freq")
+
 ```
 usage: bash figures.sh [-h] -r REFERENCE_FASTA -m MUTPOS_FILE -o OUT_FILE [-c MIN_CLONALITY] [-l MAX_CLONALITY] [-d MIN_DEPTH] [-n NOTATION]
 
