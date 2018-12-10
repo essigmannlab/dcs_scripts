@@ -425,7 +425,13 @@ def main():
                         type=str,
                         dest="proportions",
                         default="proportions",
-                        help=("Plotting proportions of mutations (a la mutational spectra) or total frequencies, True being proportions."),
+                        help=("Plotting proportions of mutations (normalized) or total frequencies (unnormalized)."),
+                        required=False)
+    parser.add_argument("-o", "--outdir",
+                        type=str,
+                        dest="outdir",
+                        default="outdir",
+                        help=("Optional name for output directory."),
                         required=False)
     parser.add_argument("-y", "--ymax",
                         action="store",
@@ -437,9 +443,7 @@ def main():
                         type=str,
                         dest="title",
                         default='',
-                        help=("Plot title to be overlayed if supplied. The "
-                              "default option creates an informative title. "
-                              "Type None for no title."),
+                        help=("Plot title to be overlayed if supplied."),
                         required=False)
     parser.add_argument("-c", "--minClonality",
                         action="store",
@@ -480,8 +484,8 @@ def main():
                         action="store",
                         type=str,
                         dest="format",
-                        default='png',
-                        help=("Format of the output image file [png]"),
+                        default='eps',
+                        help=("Format of the output image file [eps]"),
                         required=False)
 
     args = parser.parse_args()
@@ -489,7 +493,7 @@ def main():
     # Set up local variables
     mpl.rc("savefig", dpi=int(args.dpi))
     clonality = (args.min_clonality, args.max_clonality)
-    mutpos_name = os.path.basename(args.mutpos_file)
+    mutpos_name = args.outdir + "/" + os.path.basename(args.mutpos_file)
 
     if args.mutpos_file.endswith('.mutpos'):
         image_file1 = mutpos_name.replace('.mutpos',
