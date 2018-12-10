@@ -21,8 +21,7 @@ def combine(inputs, output):
                 if line == [""]: break
 
                 chrom,ref,pos,depth,mut,Ts,Cs,Gs,As,ins,dels,Ns = line
-				if chrom == "Chrom":
-					continue
+                if chrom == "Chrom": continue
                 new_mp = [chrom,ref,int(depth),int(mut),int(Ts),int(Cs),int(Gs),int(As),int(ins),int(dels),int(Ns)]
                 pos = int(pos)
                 if pos not in combined.keys():
@@ -31,7 +30,7 @@ def combine(inputs, output):
                     combined[pos][i] = combined[pos][i] + new_mp[i]
 
     combined = OrderedDict(sorted(combined.items(), key=lambda x:x[0]))
-	output = output + ".mutpos"
+    output = output + ".mutpos"
     with open(output, 'w') as fo:
         for key in list(combined.keys()):
             l_out = [str(x) for x in combined[key]]
