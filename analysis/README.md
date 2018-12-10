@@ -1,12 +1,4 @@
-# DCS Post-Processing
-### _Author_:
-Lina Kim, klkim [at] mit dot edu; Essigmann Lab, MIT
-### _Version_: 
-2.5.1
-### _Date_:
-* 2.5.1: 12/21/17
-* 2.5: 12/20/17
-* 2.0: 08/29/17
+# Mutational Analysis
 
 ```
 usage: bash figures.sh [-h] -r REFERENCE_FASTA -m MUTPOS_FILE -o OUT_FILE [-c MIN_CLONALITY] [-l MAX_CLONALITY] [-d MIN_DEPTH] [-n NOTATION]
@@ -33,13 +25,3 @@ optional arguments:
                         This is useful for labelling figures as purines or
                         pyrimidines. [pyrimidine]
 ```
-### _Changes from 2.5_:
-* Updated `figures.sh` used for version 2.5
-
-### _Changes from 2.0_:
-* Removed 'lab' option, making Essigmann Lab the default
-* Changed the default max_clonality value from 0.2 to 1, to account for total mutations
-* Calculations for unique mutation placement are made later in the script, by position instead of clonality threshold
-* Normalization for context frequencies changed to be made in the spectrum dictionary
-* Added functionality: plotting with purine labels in the same order as pyrimidine labels (a la Stratton signatures)
-* Context labels moved 0.25 units to the left, for better alignment with bars
